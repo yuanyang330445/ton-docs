@@ -1512,3 +1512,71 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
     execute(my_cont);
 }
 ```
+
+### How to verify Merkle proof in a dictionary
+
+```func
+(slice, int) begin_parse_exotic (cell c) asm "XCTOS";
+
+int check_proof (int merkle_root, cell merkle_proof, int index, slice expected_data) {
+    (slice cs, int special) = merkle_proof.begin_parse_exotic();
+    if (~ special) {
+        return false;
+    }
+    if (cs~load_uint(8) != 3) { ;; Merkle proof
+        return false;
+    }
+    if (cs~load_uint(256) != merkle_root) {
+        return false;
+    }
+    cell dict = cs~load_ref();
+    (slice data, int found?) = dict.udict_get?(64, index);
+    if (~ found?) {
+        return false;
+    }
+    return equal_slices(data, expected_data);
+}
+```
+
+### How to apply Merkle update to a dictionary
+
+```func
+(slice, int) begin_parse_exotic (cell c) asm "XCTOS";
+
+int apply_update (int merkle_root, cell merkle_update, int index, slice expected_old_data, slice expected_new_data) {
+    ;; this function will try to apply the merkle update to an existing dictionary
+    ;; it returns the resulting (may be not changed in case of fail) merkle root hash
+
+    (slice cs, int special) = merkle_update.begin_parse_exotic();
+    if (~ special) {
+        return merkle_root;
+    }
+    if (cs~load_uint(8) != 4) { ;; Merkle update
+        return merkle_root;
+    }
+    if (cs~load_uint(256) != merkle_root) {
+        return merkle_root;
+    }
+
+    cell old_dict = cs~load_ref();
+    (slice old_data, int found?) = old_dict.udict_get?(64, index);
+    if (~ found?) {
+        return merkle_root;
+    }
+    if (~ equal_slices(old_data, expected_old_data)) {
+        return merkle_root;
+    }
+
+    cell new_dict = cs~load_ref();
+    (slice new_data, int found?) = new_dict.udict_get?(64, index);
+    if (~ found?) {
+        return merkle_root;
+    }
+    if (~ equal_slices(new_data, expected_new_data)) {
+        return merkle_root;
+    }
+
+    int new_merkle_root = cs~load_uint(256);
+    return new_merkle_root;
+}
+```
