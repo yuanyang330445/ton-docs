@@ -1572,7 +1572,7 @@ d.set(3, 33);
 
 // we want to set the value of key `3` to `123`
 // in smart contract that only stores the hash of the whole dictionary
-const proof: Cell = d.generateMerkleUpdate(3, 123);
+const update: Cell = d.generateMerkleUpdate(3, 123);
 ```
 
 ### How to apply Merkle update to a dictionary
