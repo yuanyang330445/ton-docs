@@ -1513,14 +1513,32 @@ forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 }
 ```
 
+### How to generate Merkle proof for dictionary using `ton` TS library
+
+```ts
+// for example, let's set key as Uint8 and value as Uint32
+// but in reality, you can use any key and value types
+let d = Dictionary.empty(Dictionary.Keys.Uint(8), Dictionary.Values.Uint(32));
+d.set(1, 11);
+d.set(2, 22);
+d.set(3, 33);
+
+// we want to prove that there is a key `3` with corresponding value `33` in the dictionary
+// to a smart contract that only stores the hash of the whole dictionary
+const proof: Cell = d.generateMerkleProof(3);
+```
+
 ### How to verify Merkle proof in a dictionary
 
 ```func
 (slice, int) begin_parse_exotic (cell c) asm "XCTOS";
 
 int check_proof (int merkle_root, cell merkle_proof, int index, slice expected_data) {
-    (slice cs, int special) = merkle_proof.begin_parse_exotic();
-    if (~ special) {
+    ;; this function checks the merkle proof for correctness
+
+    (slice cs, int special?) = merkle_proof.begin_parse_exotic();
+
+    if (~ special?) {
         return false;
     }
     if (cs~load_uint(8) != 3) { ;; Merkle proof
@@ -1529,13 +1547,32 @@ int check_proof (int merkle_root, cell merkle_proof, int index, slice expected_d
     if (cs~load_uint(256) != merkle_root) {
         return false;
     }
+
     cell dict = cs~load_ref();
-    (slice data, int found?) = dict.udict_get?(64, index);
+    ;; let's assume that keys are of type Uint8
+    (slice data, int found?) = dict.udict_get?(8, index);
+
     if (~ found?) {
         return false;
     }
+
     return equal_slices(data, expected_data);
 }
+```
+
+### How to generate Merkle update for dictionary using `ton` TS library
+
+```ts
+// for example, let's set key as Uint8 and value as Uint32
+// but in reality, you can use any key and value types
+let d = Dictionary.empty(Dictionary.Keys.Uint(8), Dictionary.Values.Uint(32));
+d.set(1, 11);
+d.set(2, 22);
+d.set(3, 33);
+
+// we want to set the value of key `3` to `123`
+// in smart contract that only stores the hash of the whole dictionary
+const proof: Cell = d.generateMerkleUpdate(3, 123);
 ```
 
 ### How to apply Merkle update to a dictionary
@@ -1544,10 +1581,11 @@ int check_proof (int merkle_root, cell merkle_proof, int index, slice expected_d
 (slice, int) begin_parse_exotic (cell c) asm "XCTOS";
 
 int apply_update (int merkle_root, cell merkle_update, int index, slice expected_old_data, slice expected_new_data) {
-    ;; this function will try to apply the merkle update to an existing dictionary
+    ;; this function tries to apply the merkle update to an existing dictionary
     ;; it returns the resulting (may be not changed in case of fail) merkle root hash
 
     (slice cs, int special) = merkle_update.begin_parse_exotic();
+
     if (~ special) {
         return merkle_root;
     }
@@ -1559,7 +1597,7 @@ int apply_update (int merkle_root, cell merkle_update, int index, slice expected
     }
 
     cell old_dict = cs~load_ref();
-    (slice old_data, int found?) = old_dict.udict_get?(64, index);
+    (slice old_data, int found?) = old_dict.udict_get?(8, index);
     if (~ found?) {
         return merkle_root;
     }
@@ -1568,7 +1606,7 @@ int apply_update (int merkle_root, cell merkle_update, int index, slice expected
     }
 
     cell new_dict = cs~load_ref();
-    (slice new_data, int found?) = new_dict.udict_get?(64, index);
+    (slice new_data, int found?) = new_dict.udict_get?(8, index);
     if (~ found?) {
         return merkle_root;
     }
