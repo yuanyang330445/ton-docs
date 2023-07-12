@@ -1618,3 +1618,15 @@ int apply_update (int merkle_root, cell merkle_update, int index, slice expected
     return new_merkle_root;
 }
 ```
+
+### How to deploy a library to masterchain
+
+TODO
+
+### How to use deployed library from smart contract
+
+Let's say you want to get access to a library with hash `59842b683ace7976ae8b699482f7b67a9254220f4c935bbf0f453659f2acd163`. Here is how you can define a FunC function that will return the cell of that library:
+
+```func
+(cell) library () inline asm "<b 2 8 u, 0x59842b683ace7976ae8b699482f7b67a9254220f4c935bbf0f453659f2acd163 256 u, b>spec PUSHREF";
+```
